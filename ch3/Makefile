@@ -3,6 +3,7 @@ CFLAGS = -Wall -Wextra -pedantic-errors -g
 LINK_SHARED = -lrt
 SHARED_SRC = producer.c consumer.c time.c
 SHARED_EXE = $(SHARED_SRC:.c=)
+HEADERS = pid_manager.h
 
 %: %.c
 	$(CC) $(CFLAGS) $< -o $@
@@ -18,5 +19,12 @@ consumer: consumer.c
 time: time.c
 	$(CC) $(CFLAGS) $< $(LINK_SHARED) -o $@
 
+pid_manager: pid_manager.o
+	$(CC) $(CFLAGS) $< -o $@
+	
+pid_manager.o: pid_manager.c pid_manager.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
 clean:
-	ls | grep -v -E "\.|Makefile" | xargs rm
+	ls | grep -v -E "\.|Makefile" | xargs rm *.o
+

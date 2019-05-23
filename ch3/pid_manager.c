@@ -6,18 +6,20 @@ int allocate_map(void) {
 	pids = (pids_ptr) malloc(sizeof(struct pid_vec));
 	if (pids == NULL)
 		return -1;
-	pids->ids = {0};
+	memset(pids->ids, 0, BIT_VECTOR_SIZE);
 	return 1;
 }
 
 int allocate_pid(void) {
 	size_t mask = 1;
 	for (int i = 0; i < BIT_VECTOR_SIZE; i++) {
-		size_t candidate = (pids->ids)[i];
+		size_t* candidate = &(pids->ids)[i];
 		int position = 0;
 		while (mask != 0) {
-			if (!(mask & candidate))
-				return PID_MIN + i * 64 + position;
+			if (!(mask & *candidate)) {
+				*candidate |= mask;
+				return MIN_PID + i * 64 + position;
+			}
 			position++;
 			mask = mask << 1;
 		}
@@ -28,13 +30,49 @@ int allocate_pid(void) {
 }
 
 void release_pid(int pid) {
-	size_t aligned_pid = pid - PID_MIN;
+	if (pid < MIN_PID || pid > MAX_PID) {
+		fprintf(stderr, "Ilegal pid num");
+		return;
+	}
+	size_t aligned_pid = pid - MIN_PID;
 	size_t cell = aligned_pid / 64;
-	int offset = cell % 64;
-	int mask = 1 << offset;
-	cell &= ~mask;
+	int offset = aligned_pid % 64;
+	size_t mask = 1UL << offset;
+	(pids->ids)[cell] &= ~mask;
+}
+
+int is_taken(int pid) {
+	size_t aligned_pid = pid - MIN_PID;
+	size_t cell = aligned_pid / 64;
+	int offset = aligned_pid % 64;
+	size_t mask = 1UL << offset;
+	return (mask & (pids->ids)[cell]) != 0;
+}
+
+void print_pids(void) {
+	printf("The following pids are in use:\n");
+	for (int i = MIN_PID; i <= MAX_PID; i++) {
+		if (is_taken(i))
+			printf("%d, ", i);
+	}
+	printf("\n");
 }
 
 int main() {
+	if (allocate_map() == -1)
+		exit(1);
+	for (int i = 0; i < 4800; i++){
+		if (allocate_pid() == -1) {
+			fprintf(stderr, "Out of pids");
+			return 1;
+		}
+	}
+	for (int i =MIN_PID; i < MAX_PID; i++) {
+		if (i % 2)
+			release_pid(i);
+	}
+	print_pids();
+	free(pids);
+	return 0;
 
 }
