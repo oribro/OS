@@ -1,4 +1,4 @@
-CC = gcc 
+CC = gcc
 CFLAGS = -Wall -Wextra -pedantic-errors -g
 LINK_SHARED = -lrt
 SHARED_SRC = producer.c consumer.c time.c collatz_conjecture.c
@@ -29,5 +29,5 @@ pid_manager.o: pid_manager.c pid_manager.h
 	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
-	ls | grep -v -E "\.|Makefile" | xargs rm *.o
+	ls | grep -v -E "\.|Makefile" | xargs rm -f *.o
 
