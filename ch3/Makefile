@@ -1,7 +1,7 @@
 CC = gcc 
 CFLAGS = -Wall -Wextra -pedantic-errors -g
 LINK_SHARED = -lrt
-SHARED_SRC = producer.c consumer.c time.c
+SHARED_SRC = producer.c consumer.c time.c collatz_conjecture.c
 SHARED_EXE = $(SHARED_SRC:.c=)
 HEADERS = pid_manager.h
 
@@ -17,6 +17,9 @@ consumer: consumer.c
 	$(CC) $(CFLAGS) $< $(LINK_SHARED) -o $@
 
 time: time.c
+	$(CC) $(CFLAGS) $< $(LINK_SHARED) -o $@
+
+collatz_conjecture: collatz_conjecture.c
 	$(CC) $(CFLAGS) $< $(LINK_SHARED) -o $@
 
 pid_manager: pid_manager.o
