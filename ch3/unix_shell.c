@@ -7,58 +7,55 @@
 
 #define MAX_LINE 80 /* The maximum length command */
 int main(void) {
-	char *args[MAX_LINE/2 + 1]; /* command line arguments */
+	char *args[MAX_LINE/2 + 1] = {0}; /* command line arguments */
 	int should_run = 1; /* flag to determine when to exit program */
-	char* history = NULL;
 	while (should_run) {
 		printf("osh>");
 		fflush(stdout);
 		char c;
 		char buf[MAX_LINE/2 + 1];
+		char history[MAX_LINE/2 + 1];
 		char* str = buf;
-		int argc = 0, j = 0;
+		int argc = 0;
 		while ((c = getchar()) != '\n') {
-			if (c == ' ') {
-				buf[j] = '\0';
-				strcpy(args[argc], str);
-				str += j + 1;
-				argc++;
-			}
-			else {
-				buf[j] = c;
-			}
-			j++;
+			*str = c;
+			str++;
 		}
-		buf[j] = '\0';
-		if (args[argc] == NULL)
-			args[argc] = (char*) malloc(sizeof(char) * (MAX_LINE/2 + 1));
-		strcpy(args[argc], str);
-		argc++;
+		*str = '\0';
+		str = strtok(buf, " ");
+		while (str != NULL) {
+			if (args[argc] == NULL)
+				args[argc] = (char*) malloc(sizeof(char) * (MAX_LINE/2 + 1));
+			strcpy(args[argc], str);
+			argc++;
+			str = strtok(NULL, " ");
+		}
 		
 		args[argc] = NULL;
 
 		// History feature
 		if (strcmp(buf, "!!") == 0) {
-			if (history == NULL) {
+			if (*history == '\0') {
 				printf("No commands in history\n");
 				continue;
 			}
 			else {
-				char* history_ptr = history;
+				char* token;
+				token = strtok(history, " ");
 				argc = 0;
-				while (*history_ptr != '\0') {
-					printf("%s ", history_ptr);
-					strcpy(args[argc], history_ptr);
-					history_ptr += strlen(history_ptr) + 1;
+				while (token != NULL) {
+					if (args[argc] == NULL)
+						args[argc] = (char*) malloc(sizeof(char) * (MAX_LINE/2 + 1));
+					strcpy(args[argc], token);
 					argc++;
+					token = strtok(NULL, " ");
 				}
 				args[argc] = NULL;
-				printf("\n");
+				printf("%s\n", args[0]);
 			}
 		}
 		else {
-			history = (char*) malloc(sizeof(char) * (MAX_LINE/2 + 1));
-			strcpy(history, buf);
+			memcpy(history, buf, sizeof(char) * (MAX_LINE/2 + 1));
 		}
 		
 		pid_t pid = fork();
@@ -73,20 +70,48 @@ int main(void) {
 				if (*args[i] == '>' && args[i+1] != NULL) {
 					fd = open(args[i+1], O_RDWR | O_CREAT, 0777);
 					dup2(fd, STDOUT_FILENO);
-					args[1] = NULL;
-					args[2] = NULL;
+					args[i] = NULL;
+					args[i+1] = NULL;
 					break;
+				}
+				else if (*args[i] == '|' && args[i+1] != NULL) {
+					int fd[2];
+					int err;
+					if (pipe(fd) == -1) {
+						fprintf(stderr, "Error");
+						return 1;
+					}
+					pid_t cpid = fork();
+					if (cpid == -1) {
+						fprintf(stderr, "Error");
+						return 1;
+					}
+					else if (cpid == 0) {
+						close(fd[1]);
+						dup2(fd[0], STDIN_FILENO);
+						if ((err = execlp(args[i+1], args[i+1],args[i+2], NULL)) == -1)
+							printf("Error: No such command\n");
+					}
+					else {
+						close(fd[0]);		
+						dup2(fd[1], STDOUT_FILENO);
+						if ((err = execlp(args[0], args[0], NULL)) == -1)
+							printf("Error: No such command\n");
+					}
+					return 0;
 				}
 			}
 			if ((ret = execvp(args[0], args)) == -1)
 				printf("Error: No such command\n");
 			if (fd != -1)
 				close(fd);
+			for (int i = 0; i < argc; i++)
+				free(args[i]);
 		}
 		else {
 			int should_wait = 1;
-			for (int i = 0; i < j; i++) {
-				if (buf[i] == '&')
+			for (int i = 0; i < argc; i++) {
+				if (*args[i] == '&')
 					should_wait = 0;
 			}
 			if (should_wait)
@@ -95,12 +120,5 @@ int main(void) {
 		}
 	}
 
-	// Release allocated memory
-	int i = 0;
-	while (args[i] != NULL) {
-		free(args[i]);
-		i++;
-	}
-	free(history);
 	return 0;
 }	
