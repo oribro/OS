@@ -3,7 +3,7 @@ CFLAGS = -Wall -Wextra -pedantic-errors -g
 LINK_SHARED = -lrt
 SHARED_SRC = producer.c consumer.c time.c collatz_conjecture.c
 SHARED_EXE = $(SHARED_SRC:.c=)
-HEADERS = pid_manager.h
+HEADERS = pid_manager.h unix_shell.h
 
 %: %.c
 	$(CC) $(CFLAGS) $< -o $@
@@ -26,6 +26,12 @@ pid_manager: pid_manager.o
 	$(CC) $(CFLAGS) $< -o $@
 	
 pid_manager.o: pid_manager.c pid_manager.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
+unix_shell: unix_shell.o
+	$(CC) $(CFLAGS) $< -o $@
+	
+unix_shell.o: unix_shell.c unix_shell.h
 	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
