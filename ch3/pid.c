@@ -10,6 +10,15 @@
 #include <linux/proc_fs.h>
 #include <linux/vmalloc.h>
 #include <asm/uaccess.h>
+#include <linux/posix_types.h>
+#include <linux/compiler.h>
+#include <linux/spinlock.h>
+#include <linux/rcupdate.h>
+#include <linux/types.h>
+#include <linux/init.h>
+#include <linux/fs.h>
+#include <linux/fdtable.h>
+#include <linux/atomic.h>
 
 #define BUFFER_SIZE 128
 #define PROC_NAME "pid"
@@ -67,35 +76,42 @@ void proc_exit(void) {
  */
 static ssize_t proc_read(struct file *file, char __user *usr_buf, size_t count, loff_t *pos)
 {
-int rv = 0;
-char buffer[BUFFER_SIZE];
-struct task_struct *tsk = NULL;
-static int completed = 0;
+    int rv = 0;
+    char buffer[BUFFER_SIZE];
+    struct task_struct *tsk = NULL;
+    static int completed = 0;
 
-if (completed) {
-completed = 0;
-return 0;
-}
+    if (completed) {
+        completed = 0;
+        return 0;
+    }
 
-tsk = pid_task(find_vpid(l_pid), PIDTYPE_PID);
-if (tsk == NULL) {
-printk( KERN_INFO "Wrong pid %ld\n", l_pid);
-return 0;
-}
-completed = 1;
-char* command = tsk->comm;
-pid_t pid = tsk->pid;
-long state = tsk->state;
+    tsk = pid_task(find_vpid(l_pid), PIDTYPE_PID);
+    if (tsk == NULL) {
+        printk( KERN_INFO "Wrong pid %ld\n", l_pid);
+        return 0;
+    }
+    completed = 1;
+    char* command = tsk->comm;
+    pid_t pid = tsk->pid;
+    long state = tsk->state;
+    unsigned int cpu = tsk->on_cpu;
+    void* stack = tsk->stack;
+    struct files_struct *files = tsk->files;
+    unsigned int next_fd = files->next_fd;
+    struct fdtable __rcu *fdt = files->fdt;
+    unsigned long *open_fds = fdt->open_fds;
 
-rv = sprintf(buffer, "command = %s pid = %d state = %ld\n", command, pid, state);
+    rv = sprintf(buffer, "command = %s pid = %d state = %ld cpu = %u fds = %lu next fd = %d\n",
+            command, pid, state, cpu, *open_fds, next_fd);
 
-// copies the contents of buffer to userspace usr_buf
-if (copy_to_user(usr_buf, buffer, rv)) {
-printk( KERN_INFO "Error copying to user\n");
-    rv = -1;
-}
+    // copies the contents of buffer to userspace usr_buf
+    if (copy_to_user(usr_buf, buffer, rv)) {
+        printk( KERN_INFO "Error copying to user\n");
+            rv = -1;
+    }
 
-return rv;
+    return rv;
 }
 
 static ssize_t proc_write(struct file *file, const char __user *usr_buf, size_t count, loff_t *pos){
