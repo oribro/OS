@@ -4,12 +4,13 @@ import java.io.InputStream;
 import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.concurrent.*;
+import java.io.UncheckedIOException;
 
 public class EchoServer {
-	public static void main(String[] args) {
+
+	private static void serveRequest(Socket client) {
 		try {
-			ServerSocket sock = new ServerSocket(6017);
-			Socket client = sock.accept();
 			InputStream in = client.getInputStream();
 			BufferedInputStream bin = new BufferedInputStream(in);
 			PrintWriter pout = new PrintWriter(client.getOutputStream(), true);
@@ -19,8 +20,28 @@ public class EchoServer {
 			}
 			
 			client.close();
-			sock.close();
-			
+		}
+		catch(IOException ioe) {
+        	throw new UncheckedIOException(ioe);
+    	} 
+	}
+
+
+	public static void main(String[] args) {
+		try {
+
+			ServerSocket sock = new ServerSocket(6017);
+
+			while (true) {
+				Socket client = sock.accept();
+
+				Runnable request = () -> {
+					EchoServer.serveRequest(client);
+				};
+
+				Thread t = new Thread(request);
+				t.start();
+			}
 		}
 		catch (IOException ioe) {
 			System.err.println(ioe);

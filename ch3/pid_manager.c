@@ -57,22 +57,3 @@ void print_pids(void) {
 	}
 	printf("\n");
 }
-
-int main() {
-	if (allocate_map() == -1)
-		exit(1);
-	for (int i = 0; i < 4800; i++){
-		if (allocate_pid() == -1) {
-			fprintf(stderr, "Out of pids");
-			return 1;
-		}
-	}
-	for (int i =MIN_PID; i < MAX_PID; i++) {
-		if (i % 2)
-			release_pid(i);
-	}
-	print_pids();
-	free(pids);
-	return 0;
-
-}

@@ -35,5 +35,5 @@ unix_shell.o: unix_shell.c unix_shell.h
 	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
-	ls | grep -v -E "\.|Makefile" | xargs rm -f *.o
+	ls | grep -v -E "\.|Makefile" | xargs rm -f *.o *.class
 

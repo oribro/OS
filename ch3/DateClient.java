@@ -11,10 +11,11 @@ public class DateClient {
 			String line;
 			while ((line = bin.readLine()) != null) {
 				System.out.println(line);
+				Thread.sleep(1000000);
 				sock.close();
 			}
 		}
-		catch (IOException ioe) {
+		catch (IOException | InterruptedException ioe) {
 			System.err.println(ioe);
 		}
 	}

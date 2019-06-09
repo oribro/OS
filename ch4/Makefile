@@ -23,6 +23,10 @@ calculate: calculate.c
 pi: pi.cpp
 	$(CPP) $(THREAD) $(OPENMP) $< -o $@
 
+pid_manager_test: pid_manager_test.c ../ch3/pid_manager.c
+	$(CC) $(THREAD) $(CFLAGS) $^ -o $@
+
+
 clean:
 	ls | grep -v -E "\.|Makefile" | xargs rm -f *.o *.class
 
