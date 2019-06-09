@@ -26,6 +26,8 @@ pi: pi.cpp
 pid_manager_test: pid_manager_test.c ../ch3/pid_manager.c
 	$(CC) $(THREAD) $(CFLAGS) $^ -o $@
 
+sudoku: sudoku.c
+	$(CC) $(THREAD) $(CFLAGS) $< -o $@
 
 clean:
 	ls | grep -v -E "\.|Makefile" | xargs rm -f *.o *.class
