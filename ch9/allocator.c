@@ -186,14 +186,73 @@ void report_memory_status(bool memory[], size_t mem_size) {
 	size_t start_addr = 0;
 	size_t i = 0;
 
-	while (i < mem_size) {
-		if (memory[i] == true)
+	printf("Used addresses:\n");
+	for (int j = 0; j < MAX_PROCESSES; j++) {
+		ProcMem* proc_mem = procs[j];
+		if (proc_mem != NULL)
+			printf("Adresses [%lu:%lu] Process %d\n", proc_mem->mem_start, proc_mem->mem_end, proc_mem->proc_id);
+	}
 
+	printf("Unused addresses:\n");
+	while (i < mem_size) {
+		while (memory[i] && i < mem_size)
+			i++;
+		start_addr = i;
+		while (!memory[i] && i < mem_size)
+			i++;
+		if (!memory[i-1])
+			printf("Adresses [%lu:%lu] Unused\n", start_addr, i-1);
 	}
 
 }
 
-void compact_unused_memory(bool memory[]);
+void compact_unused_memory(bool memory[], size_t mem_size) {
+	// Move all processes to the start of memory and holes to the end to create one big hole.
+	// This can be much better with a linked list of ProcMem* sorted by mem_start.
+	size_t base = 0;
+	size_t offset = 0;
+	size_t min_addr = mem_size;
+	ProcMem* min_proc = NULL;
+	ProcMem* proc = NULL;
+	// Array to track relocated processes.
+	bool moved_procs[MAX_PROCESSES];
+
+	for (int i = 0; i < MAX_PROCESSES; i++)
+		moved_procs[i] = false;
+
+	for (int j = 0; j < MAX_PROCESSES; j++) {
+		min_addr = mem_size;
+		min_proc = NULL;
+		for (int i = 0; i < MAX_PROCESSES; i++) {
+			// Find minimal process by address.
+			if ((proc = procs[i]) != NULL && !moved_procs[i]) {
+				if (proc->mem_start < min_addr) {
+					min_addr = proc->mem_start;
+					min_proc = proc;
+				}
+			}
+		}
+
+		// Finished moving processes.
+		if (min_proc == NULL)
+			break;
+
+		offset = min_proc->mem_start - base;
+		// Stack the minimal process on top of other processes at memory start.
+		min_proc->mem_start -= offset; 
+		min_proc->mem_end -= offset; 
+		// Update the address of last moved process.
+		base = min_proc->mem_end + 1;
+		for (size_t i = min_proc->mem_start; i <= min_proc->mem_end; i++)
+			memory[i] = true;
+		moved_procs[min_proc->proc_id-1] = true;
+	}
+
+	// Make one big hole at the end of memory
+	for (size_t i = base; i < mem_size; i++)
+		memory[i] = false;
+
+}
 
 int main(int argc, char *argv[]) {
 	size_t num_bytes;
