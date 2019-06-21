@@ -168,22 +168,23 @@ void request_contiguous_block(bool memory[], size_t mem_size, char* commands[]) 
 	ProcMem* proc_mem = malloc(sizeof(ProcMem));
 	proc_mem->proc_id = proc_id;
 	proc_mem->mem_start = alloc_addr;
-	proc_mem->mem_end = alloc_addr + size; 
+	proc_mem->mem_end = alloc_addr + size - 1; 
 	procs[proc_id-1] = proc_mem;
 
 }
 
-void release_contiguous_block(bool memory[], char commands[]) {
+void release_contiguous_block(bool memory[], char* commands[]) {
 	int proc_id = atoi(commands[1]);
 	ProcMem* proc_mem = procs[proc_id-1];
-	for (int i = proc_mem->mem_start; i < proc_mem-> mem_end; i++)
+	for (size_t i = proc_mem->mem_start; i <= proc_mem-> mem_end; i++)
 		memory[i] = false;
 	free(proc_mem);
 	procs[proc_id-1] = NULL;
 }
 
-void report_memory_status(bool memory[], int mem_size) {
-	int i = 0;
+void report_memory_status(bool memory[], size_t mem_size) {
+	size_t start_addr = 0;
+	size_t i = 0;
 
 	while (i < mem_size) {
 		if (memory[i] == true)
@@ -195,46 +196,53 @@ void report_memory_status(bool memory[], int mem_size) {
 void compact_unused_memory(bool memory[]);
 
 int main(int argc, char *argv[]) {
-	int should_run = 1;
-	int num_bytes;
+	size_t num_bytes;
 	char buf[MAX_LINE/2 + 1];
-	char commands[MAX_LINE/2 + 1];
+	char* commands[MAX_LINE/2 + 1];
 	if (argc != 2) {
 		printf("Usage: allocator NUM_OF_BYTES\n");
 		return 1;
 	}
 	num_bytes = atoi(argv[1]);
 	bool memory[num_bytes];
+	for (int i = 0; i < num_bytes; i++)
+		memory[i] = false;
 
-	while (should_run) {
+	while (true) {
 		printf("allocator>");
 		fflush(stdout);
 		fgets(buf, MAX_LINE, stdin);
 
-	  	char* token = strtok(buf," ");
+	  	char* token = strtok(buf," \n");
 	  	int i = 0;
 	  	while (token != NULL)
 	 	{
-	 		strcpy(&commands[i], token);
-	    	if (strcmp(token, "X") == 0) {
-	    		should_run = 0;
-	    		break;
+	 		if (strcmp(token, "X") == 0) {
+	    		return 0;
 	    	}
-	   	 	token = strtok(NULL, " ");
+	 		commands[i] = strdup(token);
+	  
+	   	 	token = strtok(NULL, " \n");
 	   	 	i++;
 	  	}
-	  	commands[i] = '\0';
-	  	char* command = &commands[0];
+	  	commands[i] = NULL;
+	  	char* command = commands[0];
 	  	if (strcmp(command, "RQ") == 0)
-	  		request_contiguous_block(memory, commands);
-	  	else if (strcmp(token, "RL") == 0)
+	  		request_contiguous_block(memory, num_bytes, commands);
+	  	else if (strcmp(command, "RL") == 0)
 	  		release_contiguous_block(memory, commands);
-	  	else if (strcmp(token, "C") == 0)
-	  		compact_unused_memory(memory);
-	  	else if (strcmp(token, "STAT") == 0)
+	  	else if (strcmp(command, "C") == 0)
+	  		compact_unused_memory(memory, num_bytes);
+	  	else if (strcmp(command, "STAT") == 0)
 	  		report_memory_status(memory, num_bytes);
 	  	else {
 	  		printf("Unknown command\n");
+	  	}
+
+	  	i = 0;
+	  	while (commands[i] != NULL) {
+	  		free(commands[i]);
+	  		i++;
 	  	}
 
 	}
